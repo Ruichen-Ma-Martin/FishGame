@@ -6,7 +6,6 @@ using UnityEngine;
 public class playerController : MonoBehaviour
 {
     [SerializeField] private GameObject _hand;
-    [SerializeField] private GameObject _bullet;
 
     [SerializeField] private Rigidbody2D _rb;
     [SerializeField] private float _moveSpeed = 5f;
@@ -28,14 +27,15 @@ public class playerController : MonoBehaviour
 
     void Update()
     {
-        Mouse();
+        HandleMouse();
         Shoot();
         Movement();
 
         _lastShootTime += Time.deltaTime;
     }
 
-    void Mouse()
+    // 让手（枪口）朝向鼠标：把鼠标屏幕坐标转成世界坐标后求角度
+    void HandleMouse()
     {
 
         //Vector3 handposition = _hand.transform.position;

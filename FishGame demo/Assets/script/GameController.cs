@@ -20,13 +20,14 @@ public class GameController : MonoBehaviour
     public GameObject GameStopHUD;
     private void Awake()
     {
-        instance = this;
+        // 单例初始化：必须先判空再赋值。如果先写 instance = this，判断就永远不成立，
+        // 重复的 GameController 不会被销毁，后来的实例还会顶掉正确的那个引用
         if (instance != null && instance != this)
         {
             Destroy(gameObject);
             return;
         }
-        
+        instance = this;
     }
     private void Update()
     {

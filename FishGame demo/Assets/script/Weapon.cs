@@ -12,13 +12,15 @@ public class Weapon : MonoBehaviour
 
     void Start()
     {
-        UpdateShootingpoint(_currentlevel);
+        // 按初始等级生成射击点
+        UpdateShootingPoint(_currentlevel);
     }
 
+    // 武器升级：等级 +1 并重新排布射击点，等级越高同时射出的子弹越多
     public void LevelUp()
     {
         _currentlevel++;
-        UpdateShootingpoint(_currentlevel);
+        UpdateShootingPoint(_currentlevel);
     }
 
     public void Shoot()
@@ -53,7 +55,8 @@ public class Weapon : MonoBehaviour
         return new Vector2(direction.x * cos - direction.y * sin, direction.x * sin + direction.y * cos);
     }
 
-    void UpdateShootingpoint(int level)
+    // 重建射击点：先清掉旧的，再按等级生成 level 个，以正前方为中心左右均匀展开成扇形
+    void UpdateShootingPoint(int level)
     {
         foreach (var point in shootPoints)
         {

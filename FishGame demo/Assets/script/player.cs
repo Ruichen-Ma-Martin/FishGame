@@ -15,9 +15,17 @@ public class player : MonoBehaviour
 
     void Start()
     {
-        enemy.OnEnemyDeath += getCoins;
+        // 金币来源改为拾取肉块，不再在昆虫死亡的瞬间直接结算
+        Flesh.OnCollected += GetCoinFromFlesh;
         _CoinsNumber.text = _Coins.ToString();
         _HPNumber.text = _health.ToString();
+    }
+
+    private void OnDestroy()
+    {
+        // 静态事件必须反注册：玩家死亡重载场景后，旧的处理函数还挂在事件上，
+        // 会去访问已经销毁的 UI 文本而报空引用
+        Flesh.OnCollected -= GetCoinFromFlesh;
     }
     private void Update()
     {
@@ -53,15 +61,11 @@ public class player : MonoBehaviour
         _health += 2f;
     }
 
-    void getCoins(enemy enemy)
+    // 捡到一块肉：金币 +1 并刷新显示
+    void GetCoinFromFlesh(Flesh flesh)
     {
-        if (enemy.tag == "enemy")
-        {
-            _Coins ++;
-            
-            _CoinsNumber.text = _Coins.ToString();
-        }
-            
+        _Coins++;
+        _CoinsNumber.text = _Coins.ToString();
     }
 
 
