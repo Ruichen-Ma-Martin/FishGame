@@ -1,0 +1,35 @@
+# Project Rules — Archerfish Game (射水鱼游戏)
+
+## Project
+- Unity 2D game, C#, Rigidbody2D physics.
+- BASE CODE SOURCE: `C:\GDIM\GDIM 33\VerticalSlice` (the original course project).
+  All code in this project is refactored/rewritten from the files in that folder.
+  If a reference is unclear, the original implementation can be found there.
+
+## Coding Conventions (MANDATORY)
+- Method names: PascalCase (e.g. Shoot, Move, HandleMouse).
+- Private fields: _camelCase (e.g. _moveSpeed, _health).
+- Use [SerializeField] for private fields that should show in the Inspector.
+- No public fields for Inspector use — prefer [SerializeField] private.
+
+## Comments (MANDATORY — the user reads Chinese)
+- Add Chinese comments (// 中文注释) to EVERY method and key logic block.
+- Comments must explain WHAT the code does and WHY, not just restate the code.
+- Keep comments concise and clear.
+
+## Singleton Rules
+- Fix GameController's Awake: check `if (instance != null && instance != this)`
+  and Destroy + return BEFORE assigning `instance = this`.
+- Do NOT turn GameController into a god object: do not stuff player/enemy/
+  bullet/NPC references into it.
+- Prefer events (C# events / static Action) or [SerializeField] dependency
+  injection over `GameController.instance.xxx` chains and FindObjectWithTag.
+
+## Constraints
+- NEVER use UnityEditor namespace in runtime scripts (breaks the build).
+- Keep changes localized — do not break existing gameplay outside the task.
+- Compile must succeed after each change.
+
+## Language
+- Write code and prompts in English where precise, but ALL code comments
+  must be in Chinese.
