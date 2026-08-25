@@ -23,6 +23,9 @@ public class playerController : MonoBehaviour
         {
             _rb.gravityScale = 0f;
         }
+
+        // 计时器从冷却时间起算，否则进场后头 0.5 秒的点击会被冷却判断吞掉
+        _lastShootTime = _shootCooldown;
     }
 
     void Update()
@@ -76,12 +79,12 @@ public class playerController : MonoBehaviour
         if ( horizontalInput > 0 && !_isfaceright)
         {
             _isfaceright = true;
-            //Debug.Log("face right");
+            Debug.Log("face right");
         }
         else if (horizontalInput < 0 && _isfaceright)
         {
             _isfaceright = false;
-            //Debug.Log("face left");
+            Debug.Log("face left");
         }
     }
 }
