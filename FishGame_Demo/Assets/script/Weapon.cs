@@ -23,18 +23,18 @@ public class Weapon : MonoBehaviour
         UpdateShootingPoint(_currentlevel);
     }
 
-    public void Shoot()
+    // 按调用者给定的方向开火：现在由玩家传入鱼头朝向，弹道和鱼头指向始终一致
+    public void Shoot(Vector2 aimDirection)
     {
-        // 以鼠标的世界坐标作为瞄准基准，保证子弹朝鼠标方向飞，而不是固定朝上
-        Vector3 mouseWorldPos = Camera.main != null
-            ? Camera.main.ScreenToWorldPoint(Input.mousePosition)
-            : transform.position + transform.up;
-        mouseWorldPos.z = 0f;
+        // 方向为零时退回自身 up，避免子弹原地不动
+        if (aimDirection.sqrMagnitude < 0.0001f)
+        {
+            aimDirection = transform.up;
+        }
 
         foreach (var point in shootPoints)
         {
-            Vector2 aimDirection = mouseWorldPos - point.position;
-            // 多发升级时每个射击点带有 Z 角偏移，把它叠加到鼠标方向上，保留扇形散射
+            // 多发升级时每个射击点带有 Z 角偏移，把它叠加到瞄准方向上，保留扇形散射
             Vector2 finalDirection = RotateVector(aimDirection, point.localEulerAngles.z);
 
             GameObject newBullet = Instantiate(_bullet, point.position, point.rotation);
@@ -46,7 +46,7 @@ public class Weapon : MonoBehaviour
         }
     }
 
-    // 把二维向量绕原点旋转指定角度（度），用于在鼠标方向基础上加散射角
+    // 把二维向量绕原点旋转指定角度（度），用于在瞄准方向基础上加散射角
     Vector2 RotateVector(Vector2 direction, float degrees)
     {
         float radians = degrees * Mathf.Deg2Rad;
