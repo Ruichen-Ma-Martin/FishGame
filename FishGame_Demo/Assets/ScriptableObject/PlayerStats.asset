@@ -16,6 +16,6 @@ MonoBehaviour:
   healingAmount: 2
   moveSpeed: 5
   acceleration: 40
-  turnSpeed: 270
-  maxTiltAngle: 60
+  turnSpeed: 100
+  maxTiltAngle: 30
   shootCooldown: 0.5

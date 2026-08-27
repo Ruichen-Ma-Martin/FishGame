@@ -21,6 +21,8 @@ public class playerController : MonoBehaviour
     private Vector3 _baseScale = Vector3.one;
 
     private float _lastShootTime = 0f;   // 距上次射击的累计时间：运行时状态，不进配置表
+    // 拿不到武器时只报一次错，避免每次点击都刷满 Console
+    private bool _hasReportedMissingWeapon;
 
     void Awake()
     {
@@ -31,6 +33,14 @@ public class playerController : MonoBehaviour
         if (_rb != null)
         {
             _rb.gravityScale = 0f;
+        }
+
+        // 没有配置表就整个停掉：移动、转向、射击全都要读它，继续跑只会得到一堆无头绪的空引用报错
+        if (_stats == null)
+        {
+            Debug.LogError("playerController 的 _stats 没有赋值，请在 Inspector 里挂上 PlayerStats 资源。脚本已停用。", this);
+            enabled = false;
+            return;
         }
 
         // 计时器从冷却时间起算，否则进场后头一个冷却周期内的点击会被冷却判断吞掉
@@ -50,8 +60,15 @@ public class playerController : MonoBehaviour
     // 鱼头朝向鼠标：上下只在 +/- maxTiltAngle 内倾斜，左右靠镜像实现，永远不会倒立
     void HandleAiming()
     {
+        // 0) 没有 MainCamera 就没法把鼠标换算到世界坐标，此时保持上一帧朝向
+        Camera camera = Camera.main;
+        if (camera == null)
+        {
+            return;
+        }
+
         // 1) 鼠标在鱼的位置（世界坐标）
-        Vector2 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        Vector2 mouseWorldPos = camera.ScreenToWorldPoint(Input.mousePosition);
         Vector2 dir = mouseWorldPos - (Vector2)transform.position;
 
         // 2) 判断鼠标在鱼左边还是右边：右边朝右，左边朝左（镜像）
@@ -102,11 +119,24 @@ public class playerController : MonoBehaviour
     // 开火：冷却时间由配置表决定，子弹沿鱼头方向飞出
     void Shoot()
     {
-        if (Input.GetMouseButtonDown(0) && _lastShootTime >= _stats.shootCooldown)
+        if (!Input.GetMouseButtonDown(0) || _lastShootTime < _stats.shootCooldown)
         {
-            GameController.instance.weapon.Shoot(_forward);
-            _lastShootTime = 0f; 
+            return;
         }
+
+        Weapon weapon = GameController.instance != null ? GameController.instance.weapon : null;
+        if (weapon == null)
+        {
+            if (!_hasReportedMissingWeapon)
+            {
+                Debug.LogError("开火失败：场景里没有挂 GameController 的物体，或者它的 weapon 字段没连上武器。", this);
+                _hasReportedMissingWeapon = true;
+            }
+            return;
+        }
+
+        weapon.Shoot(_forward);
+        _lastShootTime = 0f;
     }
     
     // 只沿鱼头方向前后游动：没有横向平移，也没有 W/S 上下移动

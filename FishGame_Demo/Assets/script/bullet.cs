@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+// 弹道完全靠 Rigidbody2D 的速度驱动，缺了刚体子弹只会原地不动，所以在这里强制要求
+[RequireComponent(typeof(Rigidbody2D))]
 public class bullet : MonoBehaviour
 {
     [SerializeField] private float _speed = 100f;
@@ -29,10 +31,28 @@ public class bullet : MonoBehaviour
     public float _damage = 1f;
     public static Action<bullet> BulletExplosion;
 
+    // 预制体缺组件时每颗子弹都会报一次，用静态标记压成一次
+    private static bool _hasReportedMissingCollider;
+
     void Awake()
     {
         // 在 Awake 里缓存，保证 Instantiate 之后立刻调用 Launch 也能拿到刚体
         _rb = GetComponent<Rigidbody2D>();
+        if (_rb == null)
+        {
+            Debug.LogError("子弹预制体上没有 Rigidbody2D，无法发射。请在预制体上补一个 Rigidbody2D。", this);
+            enabled = false;
+            Destroy(gameObject);
+            return;
+        }
+
+        // 命中判定走 OnTriggerEnter2D，没有勾了 Is Trigger 的碰撞体就永远打不中敌人
+        Collider2D hitBox = GetComponent<Collider2D>();
+        if ((hitBox == null || !hitBox.isTrigger) && !_hasReportedMissingCollider)
+        {
+            Debug.LogWarning("子弹预制体上没有勾选 Is Trigger 的 Collider2D，子弹能飞但打不中敌人。", this);
+            _hasReportedMissingCollider = true;
+        }
     }
 
     void Start()
@@ -52,6 +72,13 @@ public class bullet : MonoBehaviour
         if (_rb == null)
         {
             _rb = GetComponent<Rigidbody2D>();
+        }
+
+        // 仍然没有刚体说明预制体缺组件，Awake 里已经报过错并安排销毁，这里静默退出，
+        // 不要再抛一次空引用把真正有用的提示淹掉
+        if (_rb == null)
+        {
+            return;
         }
 
         // 方向为零时（例如鼠标正好压在枪口上）退回自身 up，避免子弹原地不动
