@@ -6,15 +6,20 @@ using UnityEngine;
 
 public class player : MonoBehaviour
 {
-    private float _health = 5f;
+    // 数值配置表：血量上限、治疗量等常量都从这里读，需在 Inspector 里挂上 PlayerStats 资源
+    [SerializeField] private PlayerStats_SO _stats;
+    private float _health;   // 当前血量：运行时状态，初始值在 Start 里由配置表赋予
     [SerializeField] private TMP_Text _CoinsNumber;
     [SerializeField] private TMP_Text _HPNumber;
     public enemyattack enemyattack;
 
-    public float _Coins = 0;
+    public float _Coins = 0;   // 当前金币：运行时状态，不进配置表
 
     void Start()
     {
+        // 血量上限来自配置表，避免把数值写死在代码里
+        _health = _stats.maxHealth;
+
         // 金币来源改为拾取肉块，不再在昆虫死亡的瞬间直接结算
         Flesh.OnCollected += GetCoinFromFlesh;
         _CoinsNumber.text = _Coins.ToString();
@@ -56,9 +61,10 @@ public class player : MonoBehaviour
         Destroy(gameObject,0.2f);
         GameController.instance.BackToMain();
     }
+    // 回血：回复量由配置表决定
     public void healing()
     {
-        _health += 2f;
+        _health += _stats.healingAmount;
     }
 
     // 捡到一块肉：金币 +1 并刷新显示
