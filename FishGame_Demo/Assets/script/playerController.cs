@@ -43,18 +43,40 @@ public class playerController : MonoBehaviour
             return;
         }
 
+        if (_rb == null)
+        {
+            Debug.LogError("playerController 的 _rb 没有赋值，请在 Inspector 里挂上玩家的 Rigidbody2D。脚本已停用。", this);
+            enabled = false;
+            return;
+        }
+
         // 计时器从冷却时间起算，否则进场后头一个冷却周期内的点击会被冷却判断吞掉
         _lastShootTime = _stats.shootCooldown;
     }
 
     void Update()
     {
-        // 顺序有讲究：先算朝向，Shoot 和 Movement 才能用到本帧最新的 _forward
+        // 顺序有讲究：先按输入定左右，HandleAiming 才能算出本帧正确的 _forward，Shoot 和 Movement 再用它
+        UpdateFacing();
         HandleAiming();
         Shoot();
         Movement();
 
         _lastShootTime += Time.deltaTime;
+    }
+
+    // 左右朝向由移动输入决定：按 D 朝右，按 A 朝左，松手时保持上一次的朝向
+    void UpdateFacing()
+    {
+        float moveInput = Input.GetAxisRaw("Horizontal");
+        if (moveInput > 0f)
+        {
+            _isFaceRight = true;
+        }
+        else if (moveInput < 0f)
+        {
+            _isFaceRight = false;
+        }
     }
 
     // 鱼头朝向鼠标：上下只在 +/- maxTiltAngle 内倾斜，左右靠镜像实现，永远不会倒立
@@ -72,7 +94,7 @@ public class playerController : MonoBehaviour
         Vector2 dir = mouseWorldPos - (Vector2)transform.position;
 
         // 2) 判断鼠标在鱼左边还是右边：右边朝右，左边朝左（镜像）
-        _isFaceRight = dir.x >= 0f;
+        //_isFaceRight = dir.x >= 0f;
 
         // 3) 计算目标倾斜角
         //    atan2 像"指南针"，告诉你鼠标在哪个方向（返回一个角度）
@@ -139,17 +161,17 @@ public class playerController : MonoBehaviour
         _lastShootTime = 0f;
     }
     
-    // 只沿鱼头方向前后游动：没有横向平移，也没有 W/S 上下移动
+    // 只沿鱼头方向游动：没有横向平移，也没有 W/S 上下移动
     void Movement()
     {
-        // 1) 输入：D = 前进(+1)，A = 后退(-1)
-        float moveInput = Input.GetAxisRaw("Horizontal");
+        // 1) 输入：A/D 只决定"游不游"，往左还是往右已经由 UpdateFacing 折进 _forward 里了。
+        //    这里取绝对值，否则按 A 会变成"面朝左、却沿反方向往右飘"
+        float moveInput = Mathf.Abs(Input.GetAxisRaw("Horizontal"));
 
-        // 2) 移动方向 = 鱼头方向 × 输入（只有前后，没有横向）
+        // 2) 移动方向 = 鱼头方向 × 输入（只有前进，没有横向）
         Vector2 move = _forward * moveInput;
 
         // 3) 平滑过渡到目标速度（保留原有 acceleration 手感，松手后仍会滑行一小段）
-        _rb.linearVelocity = Vector2.MoveTowards(
-            _rb.linearVelocity, move * _stats.moveSpeed, _stats.acceleration * Time.deltaTime);
+        _rb.linearVelocity = Vector2.MoveTowards(_rb.linearVelocity, move * _stats.moveSpeed, _stats.acceleration * Time.deltaTime);
     }
 }
