@@ -5,6 +5,12 @@ TagManager:
   serializedVersion: 3
   tags:
   - bullet
+<<<<<<< Updated upstream
+=======
+  - enemy
+  - WaterSurface
+  - wall
+>>>>>>> Stashed changes
   layers:
   - Default
   - TransparentFX

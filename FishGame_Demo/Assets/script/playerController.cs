@@ -82,8 +82,9 @@ public class playerController : MonoBehaviour
         // 4) 限位：把角度夹在 -maxTiltAngle ~ +maxTiltAngle 之间（防止倒立）
         //    重要：rawAngle 是"从水平方向算起的绝对角度"，不是"相对当前角度的增量"。
         //    所以鱼头转到 60° 就是上限，绝不会"转 30° 后再累加 60° 变成 90°"。
-        float targetTilt = Mathf.Clamp(rawAngle, -_stats.maxTiltAngle, _stats.maxTiltAngle);
-
+        //float targetTilt = Mathf.Clamp(rawAngle, -_stats.maxTiltAngle, _stats.maxTiltAngle);
+       // float maxTilt = _isFaceRight ? _stats.maxTiltAngle : 180-_stats.maxTiltAngle;
+        float targetTilt = Mathf.Clamp(rawAngle, -_stats.maxTiltAngle, _stats.maxTiltAngle);    
         // 5) 平滑旋转：鱼头"慢慢转过去"，不是瞬间指向
         //    MoveTowards 从当前值"匀速靠近"目标值（目标值永远是绝对角度，不会越转越多）
         _currentTilt = Mathf.MoveTowards(_currentTilt, targetTilt, _stats.turnSpeed * Time.deltaTime);
