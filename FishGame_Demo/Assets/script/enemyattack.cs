@@ -5,14 +5,19 @@ using UnityEngine;
 
 public class enemyattack : MonoBehaviour
 {
-    private float _lifetime = 0.5f;
+    // 数值配置表：伤害和攻击持续时间从这里读，需在 Inspector 里挂上 EnemyStats 资源
+    [SerializeField] private EnemyStats_SO _stats;
     private float _timer = 0f;
-    public float _damage = 1f;
+    // 保持 _damage 名称，player.cs 通过 enemyattack._damage 读取伤害
+    public float _damage => _stats.damage;
 
+    // 每次启用时重置剩余时间，持续时间来自配置表
     private void OnEnable()
     {
-        _timer = _lifetime;
+        _timer = _stats.attackLifetime;
     }
+
+    // 倒计时结束就关掉攻击碰撞体
     private void Update()
     {
         _timer -= Time.deltaTime;
@@ -21,5 +26,4 @@ public class enemyattack : MonoBehaviour
             gameObject.SetActive(false);
         }
     }
-    
 }

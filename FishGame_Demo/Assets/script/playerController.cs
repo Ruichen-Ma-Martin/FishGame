@@ -24,6 +24,11 @@ public class playerController : MonoBehaviour
     // 拿不到武器时只报一次错，避免每次点击都刷满 Console
     private bool _hasReportedMissingWeapon;
 
+    private bool _isDashing;          // 是否正在冲刺
+    private float _dashTimer;         // 冲刺剩余时间
+    private float _dashCooldownTimer; // 冲刺冷却剩余时间
+    private Vector2 _dashDirection;   // 冲刺方向（触发瞬间锁定）
+
     void Awake()
     {
         // 记下场景里配置的原始缩放，翻转朝向时以它为基准
@@ -49,9 +54,10 @@ public class playerController : MonoBehaviour
 
     void Update()
     {
-        // 顺序有讲究：先算朝向，Shoot 和 Movement 才能用到本帧最新的 _forward
+        // 顺序有讲究：先算朝向，Shoot / HandleDash / Movement 才能用到本帧最新的 _forward
         HandleAiming();
         Shoot();
+        HandleDash();
         Movement();
 
         _lastShootTime += Time.deltaTime;
@@ -140,9 +146,53 @@ public class playerController : MonoBehaviour
         _lastShootTime = 0f;
     }
     
+    // 冲刺：按 Shift 沿当前鱼头方向爆发加速，冷却期间不能再触发
+    void HandleDash()
+    {
+        // 冷却递减
+        if (_dashCooldownTimer > 0f)
+        {
+            _dashCooldownTimer -= Time.deltaTime;
+        }
+
+        // 触发：按 Shift，且冷却结束
+        bool shiftPressed = Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.RightShift);
+        if (shiftPressed && _dashCooldownTimer <= 0f)
+        {
+            _isDashing = true;
+            _dashTimer = _stats.dashDuration;
+            _dashCooldownTimer = _stats.dashCooldown;
+            _dashDirection = _forward;   // 朝鱼头方向冲，方向在触发瞬间锁定
+
+            // 触发无敌帧（player 和 playerController 在同一物体上）
+            player p = GetComponent<player>();
+            if (p != null)
+            {
+                p.SetInvincible(_stats.invincibleTime);
+            }
+        }
+
+        // 冲刺计时：持续时间到就结束
+        if (_isDashing)
+        {
+            _dashTimer -= Time.deltaTime;
+            if (_dashTimer <= 0f)
+            {
+                _isDashing = false;
+            }
+        }
+    }
+
     // 只沿鱼头方向前后游动：没有横向平移，也没有 W/S 上下移动
     void Movement()
     {
+        // 冲刺中：速度直接锁定为冲刺速度，方向保持触发时的鱼头方向，不随鼠标再转
+        if (_isDashing)
+        {
+            _rb.linearVelocity = _dashDirection * _stats.dashSpeed;
+            return;
+        }
+
         // 1) 输入：D = 前进(+1)，A = 后退(-1)
         float moveInput = Input.GetAxisRaw("Horizontal");
 

@@ -6,15 +6,27 @@ using UnityEngine;
 
 public class enemy : MonoBehaviour
 {
-    private float _health = 3f;
+    // 数值配置表：最大血量从这里读，需在 Inspector 里挂上 EnemyStats 资源
+    [SerializeField] private EnemyStats_SO _stats;
+    private float _health;   // 当前血量：运行时状态，初始值在 Start 里由配置表赋予
     public static Action<enemy> OnEnemyDeath;
     [SerializeField] private TMP_Text _HPtext;
     // 死亡时掉落的肉块预制体，玩家捡到它才获得金币
     [SerializeField] private GameObject _fleshPrefab;
-        void Update()
-        {
-            _HPtext.text = _health.ToString();
+
+    // 血量上限来自配置表，避免把数值写死在代码里
+    void Start()
+    {
+        _health = _stats.maxHealth;
     }
+
+    // 每帧刷新血量显示
+    void Update()
+    {
+        _HPtext.text = _health.ToString();
+    }
+
+    // 被子弹碰到时扣血
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.gameObject.CompareTag("bullet"))
@@ -23,6 +35,8 @@ public class enemy : MonoBehaviour
             TakeDamage();
         }
     }
+
+    // 按子弹伤害扣血，掉到 0 就死亡
     public void TakeDamage()
     {
         _health -= GameController.instance.bullet._damage;
@@ -31,6 +45,8 @@ public class enemy : MonoBehaviour
             Die();
         }
     }
+
+    // 掉肉、销毁自身，并通知监听者
     private void Die()
     {
         DropFlesh();

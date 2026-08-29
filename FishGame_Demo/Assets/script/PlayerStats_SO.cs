@@ -21,4 +21,10 @@ public class PlayerStats_SO : ScriptableObject
 
     [Header("射击")]
     public float shootCooldown = 0.5f; // 射击冷却（秒）
+
+    [Header("冲刺")]
+    public float dashSpeed = 15f;        // 冲刺速度（约为移动速度的 3 倍）
+    public float dashDuration = 0.2f;    // 冲刺持续时间（秒）
+    public float dashCooldown = 0.8f;    // 冲刺冷却（秒）
+    public float invincibleTime = 0.3f;  // 无敌帧时长（秒，比冲刺稍长留缓冲）
 }

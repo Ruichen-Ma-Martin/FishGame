@@ -15,6 +15,18 @@ public class player : MonoBehaviour
 
     public float _Coins = 0;   // 当前金币：运行时状态，不进配置表
 
+    // 无敌帧剩余时间：冲刺期间由 playerController 调用 SetInvincible 设置
+    private float _invincibleTimer;
+
+    // 无敌帧尚未走完时不受伤
+    public bool IsInvincible => _invincibleTimer > 0f;
+
+    // 由外部（冲刺）设置无敌时长；取较大值避免覆盖尚未结束的无敌
+    public void SetInvincible(float duration)
+    {
+        _invincibleTimer = Mathf.Max(_invincibleTimer, duration);
+    }
+
     void Start()
     {
         // 血量上限来自配置表，避免把数值写死在代码里
@@ -34,8 +46,14 @@ public class player : MonoBehaviour
     }
     private void Update()
     {
+        // 无敌帧倒计时：到 0 后恢复可受伤
+        if (_invincibleTimer > 0f)
+        {
+            _invincibleTimer -= Time.deltaTime;
+        }
+
         _CoinsNumber.text = _Coins.ToString();
-         _HPNumber.text = _health.ToString();
+        _HPNumber.text = _health.ToString();
     }
     private void OnTriggerEnter2D(Collider2D collision)
     {
@@ -48,6 +66,11 @@ public class player : MonoBehaviour
     }
     void TakeDamage()
     {
+        if (IsInvincible)
+        {
+            return;   // 无敌帧内不受伤
+        }
+
         StartCoroutine(GameController.instance.GetDamageEffect.DamageEffect());
         _health -= enemyattack._damage;
         _HPNumber.text = _health.ToString();

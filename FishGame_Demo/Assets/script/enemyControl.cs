@@ -17,22 +17,8 @@ public class enemyControl : MonoBehaviour
     public SpriteRenderer _enmeySprite;
     public Animator _enemyAnim;
 
-    [Header("游荡")]
-    [SerializeField] private float _minWanderSpeed = 1f;
-    [SerializeField] private float _maxWanderSpeed = 3f;
-    [SerializeField] private float _minChangeInterval = 1.5f;
-    [SerializeField] private float _maxChangeInterval = 3f;
-    [SerializeField] private float _minFloatingSpeed = 1f;
-    [SerializeField] private float _maxFloatingSpeed = 3f;
-
-    [Header("逃跑")]
-    // 进入逃跑的距离
-    [SerializeField] private float _fleeDistance = 4f;
-    [SerializeField] private float _fleeSpeed = 5f;
-    // 解除逃跑要再拉开这么多：进入看 _fleeDistance，离开看 _fleeDistance + 这个值
-    [SerializeField] private float _fleeExitBuffer = 1.5f;
-    // 水平距离小于这个值时沿用已锁定的逃跑方向，避免玩家从正下方靠近时每帧变号
-    [SerializeField] private float _fleeDirectionDeadzone = 0.5f;
+    // 数值配置表：游荡、漂浮、逃跑参数都从这里读，需在 Inspector 里挂上 EnemyStats 资源
+    [SerializeField] private EnemyStats_SO _stats;
 
     private float _wanderDirection = 1f;
     private float _wanderSpeed;
@@ -46,8 +32,10 @@ public class enemyControl : MonoBehaviour
     // 当前被竖墙堵住的水平方向：+1 右边是墙，-1 左边是墙，0 没被堵
     private float _blockedDirection;
 
-    private float FleeExitDistance => _fleeDistance + Mathf.Max(0f, _fleeExitBuffer);
+    // 解除逃跑的距离 = 进入距离 + 缓冲，缓冲小于 0 时按 0 算
+    private float FleeExitDistance => _stats.fleeDistance + Mathf.Max(0f, _stats.fleeExitBuffer);
 
+    // 初始化刚体并尝试找到玩家
     private void Awake()
     {
         if (_rb == null)
@@ -67,6 +55,7 @@ public class enemyControl : MonoBehaviour
         RandomizeFloating();
     }
 
+    // 每帧物理更新：先判定逃跑，再水平移动，垂直漂浮始终运行
     private void FixedUpdate()
     {
         UpdateFleeState();
@@ -83,6 +72,7 @@ public class enemyControl : MonoBehaviour
         RandomFloating();
     }
 
+    // 预制体无法引用场景玩家，运行时按 Tag 查找
     void TryFindPlayer()
     {
         if (_player == null)
@@ -91,7 +81,7 @@ public class enemyControl : MonoBehaviour
         }
     }
 
-    // 靠近 _fleeDistance 才开始逃；拉开到 FleeExitDistance 才停。中间维持原状态。
+    // 靠近 fleeDistance 才开始逃；拉开到 FleeExitDistance 才停。中间维持原状态。
     void UpdateFleeState()
     {
         if (_player == null)
@@ -114,7 +104,7 @@ public class enemyControl : MonoBehaviour
                 _isFleeing = false;
             }
         }
-        else if (distance <= _fleeDistance)
+        else if (distance <= _stats.fleeDistance)
         {
             _isFleeing = true;
             // 正下方死区里用当前游荡朝向垫底，避免默认往右
@@ -123,6 +113,7 @@ public class enemyControl : MonoBehaviour
         }
     }
 
+    // 随机上下漂浮，到时重新抽速度和方向
     void RandomFloating()
     {
         _changeTimerFloating -= Time.deltaTime;
@@ -134,6 +125,7 @@ public class enemyControl : MonoBehaviour
         _rb.linearVelocityY = _FloatingDirection * _FloatingSpeed;
     }
 
+    // 水平游荡：到时重新随机速度和方向，避开被堵住的一侧
     void Wander()
     {
         _changeTimerWander -= Time.deltaTime;
@@ -146,23 +138,26 @@ public class enemyControl : MonoBehaviour
         Move(_wanderDirection * _wanderSpeed);
     }
 
+    // 水平逃跑：远离玩家，速度来自配置表
     void Flee()
     {
         _fleeDirection = ComputeFleeDirection();
         _wanderDirection = _fleeDirection;
-        Move(_fleeDirection * _fleeSpeed);
+        Move(_fleeDirection * _stats.fleeSpeed);
     }
 
+    // 根据玩家相对位置决定逃跑方向，死区内沿用上次方向
     float ComputeFleeDirection()
     {
         float awayFromPlayer = transform.position.x - _player.transform.position.x;
-        float direction = Mathf.Abs(awayFromPlayer) < _fleeDirectionDeadzone
+        float direction = Mathf.Abs(awayFromPlayer) < _stats.fleeDirectionDeadzone
             ? _fleeDirection
             : Mathf.Sign(awayFromPlayer);
 
         return AvoidBlocked(direction);
     }
 
+    // 设置水平速度并翻转贴图
     void Move(float velocityX)
     {
         _rb.linearVelocityX = velocityX;
@@ -174,20 +169,23 @@ public class enemyControl : MonoBehaviour
         }
     }
 
+    // 重新随机游荡速度、方向和切换间隔
     void RandomizeWander()
     {
-        _wanderSpeed = Random.Range(_minWanderSpeed, _maxWanderSpeed);
+        _wanderSpeed = Random.Range(_stats.minWanderSpeed, _stats.maxWanderSpeed);
         _wanderDirection = Random.value < 0.5f ? -1f : 1f;
-        _changeTimerWander = Random.Range(_minChangeInterval, _maxChangeInterval);
+        _changeTimerWander = Random.Range(_stats.minChangeInterval, _stats.maxChangeInterval);
     }
 
+    // 重新随机垂直漂浮速度、方向和切换间隔
     void RandomizeFloating()
     {
-        _FloatingSpeed = Random.Range(_minFloatingSpeed, _maxFloatingSpeed);
+        _FloatingSpeed = Random.Range(_stats.minFloatingSpeed, _stats.maxFloatingSpeed);
         _FloatingDirection = Random.value < 0.5f ? -1f : 1f;
-        _changeTimerFloating = Random.Range(_minChangeInterval, _maxChangeInterval);
+        _changeTimerFloating = Random.Range(_stats.minChangeInterval, _stats.maxChangeInterval);
     }
 
+    // 根据水平速度方向翻转精灵
     void FlipSprite(float velocityX)
     {
         if (_enmeySprite == null || Mathf.Approximately(velocityX, 0f))
@@ -198,6 +196,7 @@ public class enemyControl : MonoBehaviour
         _enmeySprite.flipX = velocityX < 0f;
     }
 
+    // 撞到其他昆虫时互相弹开
     void OnCollisionEnter2D(Collision2D collision)
     {
         if (!collision.gameObject.CompareTag("enemy"))
@@ -217,16 +216,19 @@ public class enemyControl : MonoBehaviour
         }
     }
 
+    // 碰到边界时立刻处理
     void OnTriggerEnter2D(Collider2D other)
     {
         HandleBoundary(other);
     }
 
+    // 持续贴着边界时每帧纠正方向
     void OnTriggerStay2D(Collider2D other)
     {
         HandleBoundary(other);
     }
 
+    // 离开竖墙时解除水平阻挡
     void OnTriggerExit2D(Collider2D other)
     {
         if (other.CompareTag("wall") && !IsHorizontalBoundary(other))
@@ -235,6 +237,7 @@ public class enemyControl : MonoBehaviour
         }
     }
 
+    // 水面把昆虫往上推；墙按横竖分别限制垂直或水平
     void HandleBoundary(Collider2D other)
     {
         if (other.CompareTag("WaterSurface"))
@@ -259,12 +262,14 @@ public class enemyControl : MonoBehaviour
         _fleeDirection = -_blockedDirection;
     }
 
+    // 横向更长的碰撞体视为天花板/地面
     static bool IsHorizontalBoundary(Collider2D other)
     {
         Bounds bounds = other.bounds;
         return bounds.size.x >= bounds.size.y;
     }
 
+    // 如果当前方向正被墙堵住，改走反方向
     float AvoidBlocked(float direction)
     {
         if (_blockedDirection != 0f && Mathf.Approximately(direction, _blockedDirection))
@@ -275,10 +280,16 @@ public class enemyControl : MonoBehaviour
         return direction;
     }
 
+    // 选中时画出进入逃跑和解除逃跑的范围
     private void OnDrawGizmosSelected()
     {
+        if (_stats == null)
+        {
+            return;
+        }
+
         Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, _fleeDistance);
+        Gizmos.DrawWireSphere(transform.position, _stats.fleeDistance);
 
         Gizmos.color = new Color(1f, 0.5f, 0f);
         Gizmos.DrawWireSphere(transform.position, FleeExitDistance);
