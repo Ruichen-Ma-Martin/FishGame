@@ -5,12 +5,10 @@ TagManager:
   serializedVersion: 3
   tags:
   - bullet
-<<<<<<< Updated upstream
-=======
   - enemy
   - WaterSurface
   - wall
->>>>>>> Stashed changes
+  - enemyhitbox
   layers:
   - Default
   - TransparentFX

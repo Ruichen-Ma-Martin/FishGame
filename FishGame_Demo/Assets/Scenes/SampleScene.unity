@@ -322,7 +322,7 @@ GameObject:
   - component: {fileID: 530815879}
   m_Layer: 0
   m_Name: Player
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -474,13 +474,8 @@ Transform:
   m_GameObject: {fileID: 530815873}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-<<<<<<< Updated upstream
-  m_LocalPosition: {x: -5.52, y: -1.67, z: 0}
-  m_LocalScale: {x: 0.6827, y: 0.6147, z: 1}
-=======
   m_LocalPosition: {x: -4.11, y: -2.04, z: 0}
   m_LocalScale: {x: 0.18241742, y: 0.1796768, z: 1}
->>>>>>> Stashed changes
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 399818388}
@@ -1004,7 +999,7 @@ GameObject:
   - component: {fileID: 1402444028}
   m_Layer: 0
   m_Name: EnemyInsect
-  m_TagString: Untagged
+  m_TagString: enemy
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1360,9 +1355,11 @@ GameObject:
   - component: {fileID: 2070984014}
   - component: {fileID: 2070984013}
   - component: {fileID: 2070984015}
+  - component: {fileID: 2070984016}
+  - component: {fileID: 2070984017}
   m_Layer: 0
   m_Name: waterSurface
-  m_TagString: Untagged
+  m_TagString: WaterSurface
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1454,8 +1451,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WaterSurface
   _gizmoLineWidth: 50
-<<<<<<< Updated upstream
-=======
 --- !u!61 &2070984016
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -1529,7 +1524,6 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 7
->>>>>>> Stashed changes
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
