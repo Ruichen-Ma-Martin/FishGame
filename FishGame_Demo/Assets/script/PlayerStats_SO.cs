@@ -27,4 +27,7 @@ public class PlayerStats_SO : ScriptableObject
     public float dashDuration = 0.2f;    // 冲刺持续时间（秒）
     public float dashCooldown = 0.8f;    // 冲刺冷却（秒）
     public float invincibleTime = 0.3f;  // 无敌帧时长（秒，比冲刺稍长留缓冲）
+
+    [Header("水面")]
+    public float waterAirGravity = 0.8f;   // 鱼在水面以上时受到的重力（越小跃出后越"飘"、留空越久）
 }

@@ -108,4 +108,4 @@ MonoBehaviour:
   _driftSpeed: 0.5
   _bobAmplitude: 0.1
   _bobFrequency: 1.5
-  _lifeTime: 1
+  _lifeTime: 10

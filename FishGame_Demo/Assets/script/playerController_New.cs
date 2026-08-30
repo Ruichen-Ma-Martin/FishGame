@@ -34,7 +34,7 @@ public class playerController_New : MonoBehaviour
         // 记下场景里配置的原始缩放，翻转朝向时以它为基准
         _baseScale = transform.localScale;
 
-        // 水中悬浮：关掉重力，玩家的垂直位置完全由输入决定，不会自己往下掉
+        // 开局先按水下悬浮关重力；之后每帧由 HandleWaterPhysics 按水面上下切换
         if (_rb != null)
         {
             _rb.gravityScale = 0f;
@@ -66,6 +66,7 @@ public class playerController_New : MonoBehaviour
         HandleAiming();
         Shoot();
         HandleDash();
+        HandleWaterPhysics();
         Movement();
 
         _lastShootTime += Time.deltaTime;
@@ -202,6 +203,13 @@ public class playerController_New : MonoBehaviour
         }
     }
 
+    // 水面物理切换：水上开重力（把鱼拉回水面），水下关重力（悬浮）
+    void HandleWaterPhysics()
+    {
+        bool isAboveWater = transform.position.y > WaterSurface.LineY;
+        _rb.gravityScale = isAboveWater ? _stats.waterAirGravity : 0f;
+    }
+
     // 只沿鱼头方向游动：没有横向平移，也没有 W/S 上下移动
     void Movement()
     {
@@ -209,6 +217,12 @@ public class playerController_New : MonoBehaviour
         if (_isDashing)
         {
             _rb.linearVelocity = _dashDirection * _stats.dashSpeed;
+            return;
+        }
+
+        // 水面以上：不响应 A/D，只受重力做抛物线，自然落回水面
+        if (transform.position.y > WaterSurface.LineY)
+        {
             return;
         }
 
