@@ -388,7 +388,6 @@ GameObject:
   - component: {fileID: 530815878}
   - component: {fileID: 530815877}
   - component: {fileID: 530815880}
-  - component: {fileID: 530815876}
   - component: {fileID: 530815875}
   - component: {fileID: 530815874}
   - component: {fileID: 530815879}
@@ -463,21 +462,6 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
---- !u!114 &530815876
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 530815873}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b038abcef2abd8943a34bab39cfb1076, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::playerController
-  _hand: {fileID: 0}
-  _rb: {fileID: 530815875}
-  _stats: {fileID: 11400000, guid: 2cf83406e6fb03f488e24ce114e3e015, type: 2}
 --- !u!212 &530815877
 SpriteRenderer:
   serializedVersion: 2
@@ -582,7 +566,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 853a2db3bd498744f999929b190a214a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::playerController_New
-  _hand: {fileID: 0}
   _rb: {fileID: 530815875}
   _stats: {fileID: 11400000, guid: 2cf83406e6fb03f488e24ce114e3e015, type: 2}
 --- !u!1 &619394800

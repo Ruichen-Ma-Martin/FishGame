@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36765e4f0948ca84ca1bff76cb659292, type: 3}
   m_Name: Level_1
   m_EditorClassIdentifier: Assembly-CSharp::LevelConfig_SO
-  softBoundaryWidth: 0.2
-  pushStrength: 20
+  forceRadius: 5
+  forceStrength: 40
   cameraSmoothTime: 0.2

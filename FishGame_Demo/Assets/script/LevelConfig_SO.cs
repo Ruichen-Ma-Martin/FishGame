@@ -8,8 +8,8 @@ using UnityEngine;
 public class LevelConfig_SO : ScriptableObject
 {
     [Header("水流边界")]
-    public float softBoundaryWidth = 1f;   // 水流带宽度：从墙向内延伸多宽算"水流带"
-    public float pushStrength = 8f;        // 水流推力强度（越大越推不动）
+    public float forceRadius = 3f;      // 力场半径：玩家离墙内侧多近开始受排斥力
+    public float forceStrength = 8f;    // 排斥力强度：贴墙时把它推离的速度（越大推得越狠）
 
     [Header("摄像机")]
     public float cameraSmoothTime = 0.2f;  // 摄像机平滑延迟（秒，SmoothDamp 的 smoothTime）

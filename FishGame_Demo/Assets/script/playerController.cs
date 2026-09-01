@@ -5,15 +5,14 @@ using UnityEngine;
 
 public class playerController : MonoBehaviour
 {
-    [SerializeField] private GameObject _hand;
-
     [SerializeField] private Rigidbody2D _rb;
-    // 数值配置表：移动速度、加速度、转向速度、最大倾斜角、射击冷却都从这里读，需在 Inspector 里挂上 PlayerStats 资源
+    // 数值配置表：移动速度、加速度、鼠标灵敏度、最大倾斜角、射击冷却都从这里读，需在 Inspector 里挂上 PlayerStats 资源
     [SerializeField] private PlayerStats_SO _stats;
 
-    // 朝向：鼠标在鱼右边为 true。保留此标记，供后续翻转贴图/动画使用
+    // 朝向：由 A/D 决定，按 D 为 true、按 A 为 false。松手保持上一次朝向。
     private bool _isFaceRight = true;
-    // 当前鱼头倾斜角（度）：从水平方向算起的"绝对角度"，不是每帧累加的增量
+    // 当前鱼头倾斜角（度）：物体真实的 Z 轴旋转值，夹在 ±maxTiltAngle。
+    // 朝左时鼠标增量按相反方向累加，保证两个朝向下都是"鼠标往上、鱼头就抬起"
     private float _currentTilt;
     // 鱼头方向（前进箭头）：移动和射击都用它，保证"看到的朝向"和"实际飞的方向"一致
     private Vector2 _forward = Vector2.right;
@@ -34,7 +33,7 @@ public class playerController : MonoBehaviour
         // 记下场景里配置的原始缩放，翻转朝向时以它为基准
         _baseScale = transform.localScale;
 
-        // 水中悬浮：关掉重力，玩家的垂直位置完全由输入决定，不会自己往下掉
+        // 开局先按水下悬浮关重力；之后每帧由 HandleWaterPhysics 按水面上下切换
         if (_rb != null)
         {
             _rb.gravityScale = 0f;
@@ -48,79 +47,87 @@ public class playerController : MonoBehaviour
             return;
         }
 
+        if (_rb == null)
+        {
+            Debug.LogError("playerController 的 _rb 没有赋值，请在 Inspector 里挂上玩家的 Rigidbody2D。脚本已停用。", this);
+            enabled = false;
+            return;
+        }
+
         // 计时器从冷却时间起算，否则进场后头一个冷却周期内的点击会被冷却判断吞掉
         _lastShootTime = _stats.shootCooldown;
+
+        // 鼠标隐藏并锁定：上下移动只用来抬头/低头，不显示光标（FPS 式）
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 
     void Update()
     {
-        // 顺序有讲究：先算朝向，Shoot / HandleDash / Movement 才能用到本帧最新的 _forward
+        // 顺序有讲究：先按输入定左右，HandleAiming 才能算出本帧正确的 _forward，Shoot / HandleDash / Movement 再用它
+        UpdateFacing();
         HandleAiming();
         Shoot();
         HandleDash();
+        HandleWaterPhysics();
         Movement();
 
         _lastShootTime += Time.deltaTime;
     }
 
-    // 鱼头朝向鼠标：上下只在 +/- maxTiltAngle 内倾斜，左右靠镜像实现，永远不会倒立
+    // 左右朝向由移动输入决定：按 D 朝右，按 A 朝左，松手时保持上一次的朝向
+    void UpdateFacing()
+    {
+        float moveInput = Input.GetAxisRaw("Horizontal");
+        if (moveInput > 0f)
+        {
+            _isFaceRight = true;
+        }
+        else if (moveInput < 0f)
+        {
+            _isFaceRight = false;
+        }
+    }
+
+    // 鱼头瞄准：鼠标上下移动（增量）累加到倾斜角，左右镜像仍由 A/D 决定
     void HandleAiming()
     {
-        // 0) 没有 MainCamera 就没法把鼠标换算到世界坐标，此时保持上一帧朝向
-        Camera camera = Camera.main;
-        if (camera == null)
+        // 1) 读取鼠标上下移动的增量（忽略左右，左右归 A/D 管）
+        //    Mouse Y 向上为正，向下为负
+        float mouseY = Input.GetAxis("Mouse Y");
+
+        // 2) 累加到当前倾角（直接累加，FPS 手感：鼠标动多少、头转多少）
+        //    鼠标本身是连续输入，所以不需要额外的 MoveTowards 平滑
+        if(_isFaceRight)
         {
-            return;
+            _currentTilt += mouseY * _stats.mouseSensitivity;
         }
+        else{
+            _currentTilt -= mouseY * _stats.mouseSensitivity;
+        }
+        //_currentTilt += mouseY * _stats.mouseSensitivity;
 
-        // 1) 鼠标在鱼的位置（世界坐标）
-        Vector2 mouseWorldPos = camera.ScreenToWorldPoint(Input.mousePosition);
-        Vector2 dir = mouseWorldPos - (Vector2)transform.position;
+        // 3) 限位：夹在 -maxTiltAngle ~ +maxTiltAngle，防止倒立
+        _currentTilt = Mathf.Clamp(_currentTilt, -_stats.maxTiltAngle, _stats.maxTiltAngle);
 
-        // 2) 判断鼠标在鱼左边还是右边：右边朝右，左边朝左（镜像）
-        _isFaceRight = dir.x >= 0f;
+        // 4) 应用旋转：倾角写到 rotation.z
+        //    Unity 是先缩放再旋转。朝左 scale.x 为负，若仍用 +tilt，抬头会变成低头，所以朝左取负
+        //float appliedTilt = _isFaceRight ? _currentTilt : -_currentTilt;
+        transform.rotation = Quaternion.Euler(0f, 0f, _currentTilt);
 
-        // 3) 计算目标倾斜角
-        //    atan2 像"指南针"，告诉你鼠标在哪个方向（返回一个角度）
-        //    用 Mathf.Abs(dir.x) 是让角度始终算在"朝右"的范围，左右交给第 2 步的镜像
-        float rawAngle = Mathf.Atan2(dir.y, Mathf.Abs(dir.x)) * Mathf.Rad2Deg;
+        // 5) 左右镜像：瞬间翻转 scale.x（A/D 已经更新 _isFaceRight）
+       float scaleX = Mathf.Abs(_baseScale.x);
+        float signX = _isFaceRight ? 1f : -1f;
+        transform.localScale = new Vector3(signX * scaleX, _baseScale.y, _baseScale.z);
+        
+         //float yRot = _isFaceRight ? 0f : 180f;
+        //transform.rotation = Quaternion.Euler(0f, yRot, _currentTilt);
 
-        // 4) 限位：把角度夹在 -maxTiltAngle ~ +maxTiltAngle 之间（防止倒立）
-        //    重要：rawAngle 是"从水平方向算起的绝对角度"，不是"相对当前角度的增量"。
-        //    所以鱼头转到 60° 就是上限，绝不会"转 30° 后再累加 60° 变成 90°"。
-        //float targetTilt = Mathf.Clamp(rawAngle, -_stats.maxTiltAngle, _stats.maxTiltAngle);
-       // float maxTilt = _isFaceRight ? _stats.maxTiltAngle : 180-_stats.maxTiltAngle;
-        float targetTilt = Mathf.Clamp(rawAngle, -_stats.maxTiltAngle, _stats.maxTiltAngle);    
-        // 5) 平滑旋转：鱼头"慢慢转过去"，不是瞬间指向
-        //    MoveTowards 从当前值"匀速靠近"目标值（目标值永远是绝对角度，不会越转越多）
-        _currentTilt = Mathf.MoveTowards(_currentTilt, targetTilt, _stats.turnSpeed * Time.deltaTime);
-
-        // 6) 应用：旋转倾斜角 + 左右镜像
-        //    朝左时旋转角要取负：Unity 的变换是"先缩放再旋转"，镜像后若仍用 +tilt，
-        //    上下会颠倒（鼠标在左上，鱼头却指向左下）。取负后鱼头才真正指着鼠标，鱼背保持朝上。
-        float appliedTilt = _isFaceRight ? _currentTilt : -_currentTilt;
-        transform.rotation = Quaternion.Euler(0, 0, appliedTilt);
-
-        float scaleX = Mathf.Abs(_baseScale.x);
-        transform.localScale = new Vector3(_isFaceRight ? scaleX : -scaleX, _baseScale.y, _baseScale.z);
-
-        // 7) 鱼头方向（前进箭头）
-        //    cos/sin 把"角度"翻译成"箭头指向哪"（向右走多少、向上走多少）
-        //    朝左时只把水平分量取反，垂直分量保持不变，才能和第 6 步的镜像结果完全一致
+        // 6) 前进方向 = 鱼头贴图真正指向的方向，子弹、游动、冲刺都用它
+        //    Unity 先缩放再旋转：朝左时 scale.x 为负，等于把鼻子方向整体转了 180°，
+        //    所以水平和垂直分量都要乘 signX；只翻水平分量会让朝左时上下瞄准反掉
         float tiltRad = _currentTilt * Mathf.Deg2Rad;
-        _forward = new Vector2(Mathf.Cos(tiltRad), Mathf.Sin(tiltRad));
-        if (!_isFaceRight)
-        {
-            _forward.x = -_forward.x;
-        }
-
-        // 8) 枪口对齐鱼头方向：子弹是沿 _forward 飞的，枪口也跟着转才不会"指向和弹道不一致"
-        //    贴图局部朝上，所以要减 90 度
-        if (_hand != null)
-        {
-            float forwardAngle = Mathf.Atan2(_forward.y, _forward.x) * Mathf.Rad2Deg;
-            _hand.transform.rotation = Quaternion.Euler(0, 0, forwardAngle - 90f);
-        }
+        _forward = signX * new Vector2(Mathf.Cos(tiltRad), Mathf.Sin(tiltRad));
     }
 
     // 开火：冷却时间由配置表决定，子弹沿鱼头方向飞出
@@ -165,8 +172,8 @@ public class playerController : MonoBehaviour
             _dashDirection = _forward;   // 朝鱼头方向冲，方向在触发瞬间锁定
 
             // 触发无敌帧（player 和 playerController 在同一物体上）
-            player p = GetComponent<player>();
-            if (p != null)
+            // 用 TryGetComponent 而不是 GetComponent：后者取不到组件时仍会产生一次托管分配
+            if (TryGetComponent(out player p))
             {
                 p.SetInvincible(_stats.invincibleTime);
             }
@@ -183,7 +190,14 @@ public class playerController : MonoBehaviour
         }
     }
 
-    // 只沿鱼头方向前后游动：没有横向平移，也没有 W/S 上下移动
+    // 水面物理切换：水上开重力（把鱼拉回水面），水下关重力（悬浮）
+    void HandleWaterPhysics()
+    {
+        bool isAboveWater = transform.position.y > WaterSurface.LineY;
+        _rb.gravityScale = isAboveWater ? _stats.waterAirGravity : 0f;
+    }
+
+    // 只沿鱼头方向游动：没有横向平移，也没有 W/S 上下移动
     void Movement()
     {
         // 冲刺中：速度直接锁定为冲刺速度，方向保持触发时的鱼头方向，不随鼠标再转
@@ -193,14 +207,20 @@ public class playerController : MonoBehaviour
             return;
         }
 
-        // 1) 输入：D = 前进(+1)，A = 后退(-1)
-        float moveInput = Input.GetAxisRaw("Horizontal");
+        // 水面以上：不响应 A/D，只受重力做抛物线，自然落回水面
+        if (transform.position.y > WaterSurface.LineY)
+        {
+            return;
+        }
 
-        // 2) 移动方向 = 鱼头方向 × 输入（只有前后，没有横向）
+        // 1) 输入：A/D 只决定"游不游"，往左还是往右已经由 UpdateFacing 折进 _forward 里了。
+        //    这里取绝对值，否则按 A 会变成"面朝左、却沿反方向往右飘"
+        float moveInput = Mathf.Abs(Input.GetAxisRaw("Horizontal"));
+
+        // 2) 移动方向 = 鱼头方向 × 输入（只有前进，没有横向）
         Vector2 move = _forward * moveInput;
 
         // 3) 平滑过渡到目标速度（保留原有 acceleration 手感，松手后仍会滑行一小段）
-        _rb.linearVelocity = Vector2.MoveTowards(
-            _rb.linearVelocity, move * _stats.moveSpeed, _stats.acceleration * Time.deltaTime);
+        _rb.linearVelocity = Vector2.MoveTowards(_rb.linearVelocity, move * _stats.moveSpeed, _stats.acceleration * Time.deltaTime);
     }
 }

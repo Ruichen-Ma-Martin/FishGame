@@ -16,8 +16,8 @@ public class PlayerStats_SO : ScriptableObject
     public float acceleration = 40f;   // 加速度（速度变化率，越大越"干脆"，越小越像在水里滑行）
 
     [Header("转向")]
-    public float turnSpeed = 270f;     // 鱼头转向鼠标的速度（度/秒），越大转身越快
-    public float maxTiltAngle = 60f;   // 鱼头最大倾斜角度（度），限制它防止倒立
+    public float mouseSensitivity = 2f;   // 鼠标上下移动灵敏度：鼠标移动每单位，鱼头倾斜多少度
+    public float maxTiltAngle = 60f;      // 鱼头最大倾斜角度（度），限制它防止倒立
 
     [Header("射击")]
     public float shootCooldown = 0.5f; // 射击冷却（秒）
