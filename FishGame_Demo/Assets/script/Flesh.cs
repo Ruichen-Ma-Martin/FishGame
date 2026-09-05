@@ -3,6 +3,8 @@ using UnityEngine;
 
 // 昆虫死亡后掉落的肉块：先移动到水面高度，然后浮在水面上随水流缓慢漂移，
 // 玩家碰到就消失并广播拾取事件（加金币由 player.cs 负责）。
+// 位置必须通过 Rigidbody2D 驱动，原因见 FixedUpdate 里的注释
+[RequireComponent(typeof(Rigidbody2D))]
 public class Flesh : MonoBehaviour
 {
     // 被拾取时广播。用静态事件而不是直接调 GameController.instance.player，
@@ -30,16 +32,34 @@ public class Flesh : MonoBehaviour
     private float _driftDirection = 1f;
     private float _bobTimer;
 
+    private Rigidbody2D _rb;
+
+    // 预制体缺组件时每块肉都会报一次，用静态标记压成一次
+    private static bool _hasReportedMissingCollider;
+
     private void Awake()
     {
-        // 位置由脚本直接控制。预制体上如果挂了刚体，就改成运动学并清掉重力，
-        // 否则物理模拟会和脚本设置的位置互相打架
-        Rigidbody2D rb = GetComponent<Rigidbody2D>();
-        if (rb != null)
+        // 漂浮位置完全由脚本算，不希望物理再施加重力或速度，所以设成运动学刚体
+        _rb = GetComponent<Rigidbody2D>();
+        if (_rb == null)
         {
-            rb.bodyType = RigidbodyType2D.Kinematic;
-            rb.gravityScale = 0f;
-            rb.linearVelocity = Vector2.zero;
+            Debug.LogError("肉块预制体上没有 Rigidbody2D，无法漂浮也无法被拾取。请在预制体上补一个 Rigidbody2D。", this);
+            enabled = false;
+            return;
+        }
+
+        _rb.bodyType = RigidbodyType2D.Kinematic;
+        _rb.gravityScale = 0f;
+        _rb.linearVelocity = Vector2.zero;
+        // 物理是固定 50Hz 步进，插值让贴图在两步之间平滑过渡，否则慢速漂移会看出轻微顿挫
+        _rb.interpolation = RigidbodyInterpolation2D.Interpolate;
+
+        // 拾取判定走 OnTriggerEnter2D，没有勾了 Is Trigger 的碰撞体就永远捡不到
+        Collider2D pickupBox = GetComponent<Collider2D>();
+        if ((pickupBox == null || !pickupBox.isTrigger) && !_hasReportedMissingCollider)
+        {
+            Debug.LogWarning("肉块预制体上没有勾选 Is Trigger 的 Collider2D，肉块能漂浮但玩家捡不到。", this);
+            _hasReportedMissingCollider = true;
         }
 
         _driftDirection = UnityEngine.Random.value < 0.5f ? -1f : 1f;
@@ -54,28 +74,34 @@ public class Flesh : MonoBehaviour
         }
     }
 
-    private void Update()
+    // 漂浮移动放在 FixedUpdate：位置要通过刚体驱动，而刚体是按物理步长更新的
+    private void FixedUpdate()
     {
         float waterLineY = WaterSurface.LineY;
-        Vector3 position = transform.position;
+        // 以刚体的位置为基准而不是 transform.position：关掉自动同步后，
+        // 刚体位置才是物理世界里的真实位置
+        Vector2 position = _rb.position;
 
         // 水平方向始终缓慢漂移，看起来像被水流推着走
-        position.x += _driftDirection * _driftSpeed * Time.deltaTime;
+        position.x += _driftDirection * _driftSpeed * Time.fixedDeltaTime;
 
         if (_isFloating)
         {
             // 已经浮在水面：贴着水面线做小幅正弦起伏
-            _bobTimer += Time.deltaTime;
+            _bobTimer += Time.fixedDeltaTime;
             position.y = waterLineY + Mathf.Sin(_bobTimer * _bobFrequency) * _bobAmplitude;
         }
         else
         {
             // 掉落点可能在水下也可能在空中，先把肉块送到水面高度
-            position.y = Mathf.MoveTowards(position.y, waterLineY, _settleSpeed * Time.deltaTime);
+            position.y = Mathf.MoveTowards(position.y, waterLineY, _settleSpeed * Time.fixedDeltaTime);
             _isFloating = Mathf.Approximately(position.y, waterLineY);
         }
 
-        transform.position = position;
+        // 关键：必须用 MovePosition 而不是写 transform.position。
+        // 本项目 Physics2D 的 Auto Sync Transforms 是关闭的，直接改 transform 只会移动贴图，
+        // 碰撞体会留在出生点不动 —— 表现就是肉块看着浮上来了，游过去却怎么都捡不到
+        _rb.MovePosition(position);
     }
 
     private void OnTriggerEnter2D(Collider2D other)

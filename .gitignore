@@ -9,18 +9,25 @@
 [Mm]emoryCaptures/
 [Rr]ecordings/
 
-# Visual Studio 自动生成
+# Visual Studio 自动生成（Unity 会按需重新生成，不该跟踪）
 *.csproj
 *.sln
+*.slnx
 *.suo
 *.user
 *.userprefs
 *.pidb
 *.booproj
+*.unityproj
 *.svd
 *.pdb
 *.mdb
 *.opendb
+
+# Unity 其他生成物
+sysinfo.txt
+*.unitypackage
+crashlytics-build.properties
 
 # 系统文件
 .DS_Store

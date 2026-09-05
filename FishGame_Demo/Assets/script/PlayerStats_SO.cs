@@ -28,6 +28,14 @@ public class PlayerStats_SO : ScriptableObject
     public float dashCooldown = 0.8f;    // 冲刺冷却（秒）
     public float invincibleTime = 0.3f;  // 无敌帧时长（秒，比冲刺稍长留缓冲）
 
+    [Header("体力")]
+    public float maxStamina = 100f;         // 体力上限（初始值，可被商店增长）
+    public float dashStaminaCost = 30f;     // 每次冲刺消耗的体力
+    public float staminaRegenRate = 20f;    // 不冲刺时每秒回复的体力
+
+    [Header("理智")]
+    public float maxSan = 100f;    // SAN 上限（初始值，可被商店增长）
+
     [Header("水面")]
     public float waterAirGravity = 0.8f;   // 鱼在水面以上时受到的重力（越小跃出后越"飘"、留空越久）
 }

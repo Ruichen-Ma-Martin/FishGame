@@ -8,6 +8,7 @@ public class playerController : MonoBehaviour
     [SerializeField] private Rigidbody2D _rb;
     // 数值配置表：移动速度、加速度、鼠标灵敏度、最大倾斜角、射击冷却都从这里读，需在 Inspector 里挂上 PlayerStats 资源
     [SerializeField] private PlayerStats_SO _stats;
+    [SerializeField] private GameObject _WaterSurfaceCheckPoint;
 
     // 朝向：由 A/D 决定，按 D 为 true、按 A 为 false。松手保持上一次朝向。
     private bool _isFaceRight = true;
@@ -27,6 +28,15 @@ public class playerController : MonoBehaviour
     private float _dashTimer;         // 冲刺剩余时间
     private float _dashCooldownTimer; // 冲刺冷却剩余时间
     private Vector2 _dashDirection;   // 冲刺方向（触发瞬间锁定）
+
+    // 体力：两个都是运行时状态，不写回 SO。上限做成变量而不是直接读 SO，
+    // 是为了让商店以后能永久提升上限，又不会污染配置表资源（SO 的修改在编辑器里会存盘）
+    private float _maxStamina;      // 当前体力上限（运行时，初始 = SO 的 maxStamina，商店可增长）
+    private float _currentStamina;  // 当前体力（运行时）
+
+    // 给 UI 用的只读入口：外部能读到数值画血条，但改不了，避免绕过冲刺逻辑偷改体力
+    public float CurrentStamina => _currentStamina;
+    public float MaxStamina => _maxStamina;
 
     void Awake()
     {
@@ -56,6 +66,10 @@ public class playerController : MonoBehaviour
 
         // 计时器从冷却时间起算，否则进场后头一个冷却周期内的点击会被冷却判断吞掉
         _lastShootTime = _stats.shootCooldown;
+
+        // 体力上限从配置表拷一份到运行时变量，开局给满，玩家进场就能立刻冲刺
+        _maxStamina = _stats.maxStamina;
+        _currentStamina = _maxStamina;
 
         // 鼠标隐藏并锁定：上下移动只用来抬头/低头，不显示光标（FPS 式）
         Cursor.lockState = CursorLockMode.Locked;
@@ -153,7 +167,8 @@ public class playerController : MonoBehaviour
         _lastShootTime = 0f;
     }
     
-    // 冲刺：按 Shift 沿当前鱼头方向爆发加速，冷却期间不能再触发
+    // 冲刺：按 Shift 沿当前鱼头方向爆发加速。冷却与体力是"共存"的两道门槛，
+    // 两者都满足才能冲：冷却挡住连点，体力挡住长时间高频冲刺
     void HandleDash()
     {
         // 冷却递减
@@ -162,14 +177,15 @@ public class playerController : MonoBehaviour
             _dashCooldownTimer -= Time.deltaTime;
         }
 
-        // 触发：按 Shift，且冷却结束
+        // 触发：按 Shift，冷却结束，且体力足够。体力不够就直接冲不出去
         bool shiftPressed = Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.RightShift);
-        if (shiftPressed && _dashCooldownTimer <= 0f)
+        if (shiftPressed && _dashCooldownTimer <= 0f && _currentStamina >= _stats.dashStaminaCost)
         {
             _isDashing = true;
             _dashTimer = _stats.dashDuration;
             _dashCooldownTimer = _stats.dashCooldown;
             _dashDirection = _forward;   // 朝鱼头方向冲，方向在触发瞬间锁定
+            _currentStamina -= _stats.dashStaminaCost;   // 消耗体力
 
             // 触发无敌帧（player 和 playerController 在同一物体上）
             // 用 TryGetComponent 而不是 GetComponent：后者取不到组件时仍会产生一次托管分配
@@ -188,12 +204,19 @@ public class playerController : MonoBehaviour
                 _isDashing = false;
             }
         }
+
+        // 体力回复：只在不冲刺时回，上限夹在运行时的 _maxStamina。
+        // 放在计时之后，这样触发的那一帧不会先回一点再扣，冲刺结束的那一帧又能立刻开始回
+        if (!_isDashing)
+        {
+            _currentStamina = Mathf.Min(_maxStamina, _currentStamina + _stats.staminaRegenRate * Time.deltaTime);
+        }
     }
 
     // 水面物理切换：水上开重力（把鱼拉回水面），水下关重力（悬浮）
     void HandleWaterPhysics()
     {
-        bool isAboveWater = transform.position.y > WaterSurface.LineY;
+        bool isAboveWater = _WaterSurfaceCheckPoint.transform.position.y > WaterSurface.LineY;
         _rb.gravityScale = isAboveWater ? _stats.waterAirGravity : 0f;
     }
 

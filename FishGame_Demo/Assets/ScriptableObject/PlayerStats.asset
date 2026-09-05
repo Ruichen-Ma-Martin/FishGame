@@ -17,5 +17,14 @@ MonoBehaviour:
   moveSpeed: 5
   acceleration: 40
   mouseSensitivity: 2
-  maxTiltAngle: 30
-  shootCooldown: 0.5
+  maxTiltAngle: 70
+  shootCooldown: 2
+  dashSpeed: 15
+  dashDuration: 0.2
+  dashCooldown: 0.8
+  invincibleTime: 0.3
+  maxStamina: 100
+  dashStaminaCost: 30
+  staminaRegenRate: 20
+  maxSan: 100
+  waterAirGravity: 1
