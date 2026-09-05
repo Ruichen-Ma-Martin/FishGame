@@ -15,10 +15,24 @@ public class NPC : MonoBehaviour
 
     public GameObject _NPCCanvas;
     public GameObject _ShopUI;
+
+    // 对话依赖改成 Inspector 注入，不再通过 GameController 中转
+    [SerializeField] private DialogueUI _dialogueUI;
+    [SerializeField] private player _player;
+    [SerializeField] private playerController _playerController;
+
     private void Awake()
     {
         _NPCCanvas.SetActive(false);
         _currentDialogue = _StartDialogue;
+
+        // 三个引用缺任何一个，对话流程都跑不通（测距、显示台词、锁玩家操作），
+        // 与其等到玩家走近才空引用报错，不如开局就停掉并说清楚缺什么
+        if (_dialogueUI == null || _player == null || _playerController == null)
+        {
+            Debug.LogError("NPC 的 _dialogueUI / _player / _playerController 没有全部赋值，请在 Inspector 里连线。脚本已停用。", this);
+            enabled = false;
+        }
     }
 
     private void Update()
@@ -30,12 +44,12 @@ public class NPC : MonoBehaviour
     
     void checkDialogueStart()
     {
-        if(Vector2.Distance(transform.position, GameController.instance.player.transform.position) < 1.5f)
+        if(Vector2.Distance(transform.position, _player.transform.position) < 1.5f)
         {
             _NPCCanvas.SetActive(true);
             if (Input.GetKeyDown(KeyCode.E) && !_isDialogueStart&& !_isShopOpean)
             {
-                GameController.instance.playerController.enabled = false;
+                _playerController.enabled = false;
                 StartDialogue();
                 
             }
@@ -56,12 +70,12 @@ public class NPC : MonoBehaviour
         _isDialogueStart = true;
         if(_currentline < _currentDialogue._lines.Length)
         {
-            GameController.instance.dialogueUI.ShowDialogue(_currentDialogue._lines[_currentline]);
+            _dialogueUI.ShowDialogue(_currentDialogue._lines[_currentline]);
             _currentline++;
         }
         else if(_currentDialogue._playerReplyOptions != null && _currentDialogue._playerReplyOptions.Length > 0)
         {
-            GameController.instance.dialogueUI.ShowAnswer(_currentDialogue._playerReplyOptions);
+            _dialogueUI.ShowAnswer(_currentDialogue._playerReplyOptions);
             _WaitForPlayerInput = true;
         }
         else if(_currentDialogue._isOpenShop == true)
@@ -72,7 +86,7 @@ public class NPC : MonoBehaviour
         }
         else
         { 
-            GameController.instance.playerController.enabled = true;
+            _playerController.enabled = true;
             EndDialogue();
         }
     }
@@ -85,7 +99,7 @@ public class NPC : MonoBehaviour
         _currentline = 0;
         _currentDialogue = _StartDialogue;
        
-        GameController.instance.dialogueUI.DialogueHide();
+        _dialogueUI.DialogueHide();
     }
 
     public void AnswerSelection(int Option)

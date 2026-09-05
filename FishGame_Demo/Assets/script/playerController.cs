@@ -9,6 +9,8 @@ public class playerController : MonoBehaviour
     // 数值配置表：移动速度、加速度、鼠标灵敏度、最大倾斜角、射击冷却都从这里读，需在 Inspector 里挂上 PlayerStats 资源
     [SerializeField] private PlayerStats_SO _stats;
     [SerializeField] private GameObject _WaterSurfaceCheckPoint;
+    // 武器：改成 Inspector 注入，不再每次开火都去 GameController 上要引用
+    [SerializeField] private Weapon _weapon;
 
     // 朝向：由 A/D 决定，按 D 为 true、按 A 为 false。松手保持上一次朝向。
     private bool _isFaceRight = true;
@@ -62,6 +64,12 @@ public class playerController : MonoBehaviour
             Debug.LogError("playerController 的 _rb 没有赋值，请在 Inspector 里挂上玩家的 Rigidbody2D。脚本已停用。", this);
             enabled = false;
             return;
+        }
+
+        // 武器缺失只影响开火，移动和转向照常，所以不停用整个脚本，开局先提醒一次
+        if (_weapon == null)
+        {
+            Debug.LogError("playerController 的 _weapon 没有赋值，请在 Inspector 里挂上武器，否则无法开火。", this);
         }
 
         // 计时器从冷却时间起算，否则进场后头一个冷却周期内的点击会被冷却判断吞掉
@@ -152,18 +160,17 @@ public class playerController : MonoBehaviour
             return;
         }
 
-        Weapon weapon = GameController.instance != null ? GameController.instance.weapon : null;
-        if (weapon == null)
+        if (_weapon == null)
         {
             if (!_hasReportedMissingWeapon)
             {
-                Debug.LogError("开火失败：场景里没有挂 GameController 的物体，或者它的 weapon 字段没连上武器。", this);
+                Debug.LogError("开火失败：playerController 的 _weapon 没有赋值，请在 Inspector 里挂上武器。", this);
                 _hasReportedMissingWeapon = true;
             }
             return;
         }
 
-        weapon.Shoot(_forward);
+        _weapon.Shoot(_forward);
         _lastShootTime = 0f;
     }
     

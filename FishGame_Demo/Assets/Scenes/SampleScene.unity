@@ -719,8 +719,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::player
   _stats: {fileID: 11400000, guid: 2cf83406e6fb03f488e24ce114e3e015, type: 2}
-  enemyattack: {fileID: 0}
-  _Coins: 0
+  _damageEffect: {fileID: 0}
+  _flesh: 0
 --- !u!114 &530815880
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -736,6 +736,7 @@ MonoBehaviour:
   _rb: {fileID: 530815875}
   _stats: {fileID: 11400000, guid: 2cf83406e6fb03f488e24ce114e3e015, type: 2}
   _WaterSurfaceCheckPoint: {fileID: 658735499}
+  _weapon: {fileID: 399818389}
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -1235,16 +1236,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 44a1ce0658c2bfd4ba48e70e0120ebe6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameController
-  bullet: {fileID: 5530463835172722875, guid: 565b994b9b198a340bb52c24651a35b5, type: 3}
-  enemyattack: {fileID: 0}
-  player: {fileID: 530815879}
-  weapon: {fileID: 399818389}
-  animationEvent: {fileID: 0}
-  dialogueUI: {fileID: 0}
-  GetDamageEffect: {fileID: 0}
-  playerController: {fileID: 0}
-  NPC: {fileID: 0}
-  GameStopHUD: {fileID: 0}
+  _gameStopHUD: {fileID: 0}
 --- !u!4 &724960581
 Transform:
   m_ObjectHideFlags: 0

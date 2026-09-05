@@ -27,20 +27,12 @@ public class enemy : MonoBehaviour
         _health = _maxHealth;
     }
 
-    // 被子弹碰到时扣血
-    private void OnTriggerEnter2D(Collider2D collision)
+    // 扣血，掉到 0 就死亡。伤害由命中方（子弹）作为参数传进来，
+    // 所以这里不需要知道伤害来源是谁，也不用再去别的对象上读字段。
+    // 碰撞检测统一由 bullet 那一侧负责，敌人自己不再监听碰撞，避免同一次命中被结算两遍
+    public void TakeDamage(float damage)
     {
-        if (collision.gameObject.CompareTag("bullet"))
-        {
-            //Debug.Log("hit enemy");
-            TakeDamage();
-        }
-    }
-
-    // 按子弹伤害扣血，掉到 0 就死亡
-    public void TakeDamage()
-    {
-        _health -= GameController.instance.bullet._damage;
+        _health -= damage;
         if (_health <= 0)
         {
             Die();

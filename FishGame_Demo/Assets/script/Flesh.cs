@@ -7,8 +7,8 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D))]
 public class Flesh : MonoBehaviour
 {
-    // 被拾取时广播。用静态事件而不是直接调 GameController.instance.player，
-    // 和 enemy.OnEnemyDeath、bullet.BulletExplosion 保持同一套写法
+    // 被拾取时广播。用静态事件而不是自己去找玩家对象，
+    // 和 enemy.OnEnemyDeath、enemyattack.OnPlayerHit 保持同一套写法
     public static Action<Flesh> OnCollected;
 
     [Header("浮到水面")]

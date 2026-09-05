@@ -28,7 +28,8 @@ public class bullet : MonoBehaviour
     // 是否已经由 Weapon 指定过发射方向，避免 Start 里的兜底逻辑覆盖掉
     private bool _isLaunched;
 
-    public float _damage = 1f;
+    // 子弹伤害：命中时作为参数推给敌人，敌人不再反向读这个字段，所以可以收成私有
+    [SerializeField] private float _damage = 1f;
     public static Action<bullet> BulletExplosion;
 
     // 预制体缺组件时每颗子弹都会报一次，用静态标记压成一次
@@ -148,10 +149,17 @@ public class bullet : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        // 命中敌人：水上水下都一样处理，先广播命中事件再销毁
+        // 命中敌人：水上水下都一样处理，先广播命中事件（音效在听），再把伤害推给敌人后销毁。
+        // 伤害由命中方主动传参，敌人不用再反向去找子弹拿伤害值
         if (other.CompareTag("enemy"))
         {
             BulletExplosion?.Invoke(this);
+
+            if (other.TryGetComponent(out enemy hitEnemy))
+            {
+                hitEnemy.TakeDamage(_damage);
+            }
+
             Destroy(gameObject);
         }
     }

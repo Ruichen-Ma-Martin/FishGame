@@ -2,15 +2,24 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class player : MonoBehaviour
 {
     // 数值配置表：血量上限、治疗量等常量都从这里读，需在 Inspector 里挂上 PlayerStats 资源
     [SerializeField] private PlayerStats_SO _stats;
     private float _health;   // 当前血量：运行时状态，初始值在 Start 里由配置表赋予
-    public enemyattack enemyattack;
 
-    public float _Coins = 0;   // 当前金币：运行时状态，不进配置表
+    // 受伤的画面效果（暗角）。改成 Inspector 注入，不再通过 GameController 中转
+    [SerializeField] private GetDamageEffect _damageEffect;
+
+    // 血肉（货币）：运行时状态，不进配置表。改名后加 FormerlySerializedAs，
+    // 是为了让场景里原本存在 _Coins 名下的数值不会因为改名而丢失
+    [SerializeField, FormerlySerializedAs("_Coins")] private float _flesh;
+
+    // 玩家死亡时广播，由 GameController 决定后续流程（回主菜单）。
+    // 玩家自己不该知道"死了要加载哪个场景"，那是场景流程的职责
+    public static Action OnPlayerDeath;
 
     // 理智（SAN）：两个都是运行时状态，不写回 SO。上限做成变量而不是直读 SO，
     // 是为了让商店以后能永久提升上限，又不会把升级效果存进配置表资源里
@@ -27,7 +36,7 @@ public class player : MonoBehaviour
     // 免得有人绕过受伤 / 治疗 / 拾取逻辑直接改血量或货币
     public float CurrentHealth => _health;
     public float MaxHealth => _stats.maxHealth;
-    public float CurrentFlesh => _Coins;   // 血肉（货币）：类型跟随 _Coins，是 float
+    public float CurrentFlesh => _flesh;   // 血肉（货币）
     public float CurrentSan => _currentSan;
     public float MaxSan => _maxSan;
 
@@ -35,6 +44,23 @@ public class player : MonoBehaviour
     public void SetInvincible(float duration)
     {
         _invincibleTimer = Mathf.Max(_invincibleTimer, duration);
+    }
+
+    // 依赖检查：漏连引用等到受伤那一刻才空引用就很难查，开局先报清楚
+    private void Awake()
+    {
+        if (_stats == null)
+        {
+            Debug.LogError("player 的 _stats 没有赋值，请在 Inspector 里挂上 PlayerStats 资源。脚本已停用。", this);
+            enabled = false;
+            return;
+        }
+
+        if (_damageEffect == null)
+        {
+            // 只是画面效果缺失，扣血照常，所以报警告而不是停用脚本
+            Debug.LogWarning("player 的 _damageEffect 没有赋值，受伤时不会有暗角效果。", this);
+        }
     }
 
     void Start()
@@ -49,6 +75,9 @@ public class player : MonoBehaviour
 
         // 金币来源改为拾取肉块，不再在昆虫死亡的瞬间直接结算
         Flesh.OnCollected += GetCoinFromFlesh;
+
+        // 受伤改由敌人攻击方广播：伤害值随事件传进来，玩家不再持有 enemyattack 引用
+        enemyattack.OnPlayerHit += TakeDamage;
     }
 
     private void OnDestroy()
@@ -56,6 +85,7 @@ public class player : MonoBehaviour
         // 静态事件必须反注册：玩家死亡重载场景后，旧的处理函数还挂在事件上，
         // 下次触发就会访问到已经销毁的对象
         Flesh.OnCollected -= GetCoinFromFlesh;
+        enemyattack.OnPlayerHit -= TakeDamage;
     }
     private void Update()
     {
@@ -66,33 +96,33 @@ public class player : MonoBehaviour
             _invincibleTimer -= Time.deltaTime;
         }
     }
-    private void OnTriggerEnter2D(Collider2D collision)
-    {
-        if (collision.gameObject.CompareTag("enemyhitbox"))
-        {
-           //Debug.Log("Player hit by enemy!");
-            TakeDamage();
-        }
-        
-    }
-    void TakeDamage()
+    // 受伤：伤害值由 enemyattack.OnPlayerHit 事件传入，不再自己去读攻击方的字段。
+    // 碰撞检测也统一在攻击方那一侧，玩家不再监听 enemyhitbox，避免一次攻击被结算两遍
+    void TakeDamage(float damage)
     {
         if (IsInvincible)
         {
             return;   // 无敌帧内不受伤
         }
 
-        StartCoroutine(GameController.instance.GetDamageEffect.DamageEffect());
-        _health -= enemyattack._damage;
+        // 受伤效果是可选的，没连线也不该影响扣血
+        if (_damageEffect != null)
+        {
+            StartCoroutine(_damageEffect.DamageEffect());
+        }
+
+        _health -= damage;
         if (_health <= 0)
         {
             Die();
         }
     }
+
+    // 死亡：只负责销毁自己并广播事件，回主菜单交给监听方（GameController）
     private void Die()
     {
-        Destroy(gameObject,0.2f);
-        GameController.instance.BackToMain();
+        Destroy(gameObject, 0.2f);
+        OnPlayerDeath?.Invoke();
     }
     // 回血：回复量由配置表决定
     public void healing()
@@ -103,7 +133,14 @@ public class player : MonoBehaviour
     // 捡到一块肉：血肉 +1。显示由 PlayerUI 每帧读 CurrentFlesh 刷新，这里不用管
     void GetCoinFromFlesh(Flesh flesh)
     {
-        _Coins++;
+        _flesh++;
+    }
+
+    // 花掉血肉：扣除逻辑收在 player 内部，商店只管调用，不直接改字段。
+    // 夹到 0 起步，避免调用方漏做余额检查时把血肉扣成负数
+    public void SpendFlesh(float amount)
+    {
+        _flesh = Mathf.Max(0f, _flesh - amount);
     }
 
 

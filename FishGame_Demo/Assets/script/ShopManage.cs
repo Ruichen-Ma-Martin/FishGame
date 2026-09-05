@@ -1,10 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
-using UnityEditor.Rendering.Universal;
 using UnityEngine;
 using UnityEngine.UI;
-using static UnityEngine.Rendering.DebugUI.Table;
 
 public class ShopManage : MonoBehaviour
 {
@@ -19,10 +17,25 @@ public class ShopManage : MonoBehaviour
    
 
     public ShopGoods_SO[] _goodsList;
+
+    // 交易对象改成 Inspector 注入，不再通过 GameController 链式访问
+    [SerializeField] private player _player;
+    [SerializeField] private playerController _playerController;
+    [SerializeField] private NPC _npc;
+    [SerializeField] private Weapon _weapon;
+
     private void Awake()
     {
         gameObject.SetActive(false);
         _totalButtonCount = _goodsList.Length;
+
+        // 四个引用是买东西和关店面的必要条件，缺一个就会在玩家点按钮时空引用，
+        // 所以开局直接停掉脚本并报清楚，避免商店半可用
+        if (_player == null || _playerController == null || _npc == null || _weapon == null)
+        {
+            Debug.LogError("ShopManage 的 _player / _playerController / _npc / _weapon 没有全部赋值，请在 Inspector 里连线。脚本已停用。", this);
+            enabled = false;
+        }
     }
     private void Start()
     {
@@ -83,27 +96,28 @@ public class ShopManage : MonoBehaviour
     public void closeShop()
     {
         gameObject.SetActive(false);
-        GameController.instance.NPC._isShopOpean = false;
-        GameController.instance.playerController.enabled = true;
+        _npc._isShopOpean = false;
+        _playerController.enabled = true;
         
     }
     void OnButtonClick(int btnIndex)
     {
-        if (GameController.instance.player._Coins >= _goodsList[btnIndex].goodsPrice)
+        // 余额读只读属性、扣费调 player 的方法：血肉字段收在 player 内部，商店不直接改它
+        if (_player.CurrentFlesh >= _goodsList[btnIndex].goodsPrice)
         {
 
             switch (_goodsList[btnIndex].goodsName)
             {
                 case "upgrade":
 
-                    GameController.instance.player._Coins -= _goodsList[btnIndex].goodsPrice;
-                    GameController.instance.weapon.LevelUp();
+                    _player.SpendFlesh(_goodsList[btnIndex].goodsPrice);
+                    _weapon.LevelUp();
 
 
                     break;
                 case "healing":
-                    GameController.instance.player._Coins -= _goodsList[btnIndex].goodsPrice;
-                    GameController.instance.player.healing();
+                    _player.SpendFlesh(_goodsList[btnIndex].goodsPrice);
+                    _player.healing();
                     break;
             }
         }
